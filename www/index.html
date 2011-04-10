@@ -35,6 +35,23 @@
     <script>
   $ = function(id) { return document.getElementById(id); }
 
+  function adler32(data) {
+    a = 1;
+    b = 0;
+    for (i=0;i<data.length;i++) {
+      ascii = data.charCodeAt(i);
+      a = (a + ascii) % 65521
+      b = (a + b) % 65521
+    }
+    a0 = a >>> 8
+    a1 = a & 255
+    b0 = b >>> 8
+    b1 = b & 255
+
+    r = [String.fromCharCode(b0),String.fromCharCode(b1),String.fromCharCode(a0),String.fromCharCode(a1)]
+    return r.join("")
+  }
+
   function handleFileSelect(evt) {
     evt.stopPropagation();
     evt.preventDefault();
@@ -47,7 +64,13 @@
 
     function compressData(data) {
       // deflated data does not have the zlib header or data checksum
-      return btoa(RawDeflate.deflate(data,3));
+      // second part of the header is most likely not correct
+      // the slice+0x00 is due to a trailing 0x0030 that needs to be 0x0000
+      header = String.fromCharCode(0x78) + String.fromCharCode(0x01)
+      raw_compressed = RawDeflate.deflate(data)
+      checksum = adler32(data)
+      compressed = header + raw_compressed + checksum;
+      return btoa(compressed);
     }
 
     // modified from https://developer.mozilla.org/en/using_files_from_web_applications
