@@ -1,0 +1,4 @@
+chunk up uncompressed client side data
+compress a chunk and upload it
+server side recieves it, uncompresses it and appends it to the log
+

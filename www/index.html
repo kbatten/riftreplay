@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+  <!--
+    references:
+      http://www.html5rocks.com/tutorials/file/dndfiles/
+      https://developer.mozilla.org/en/using_files_from_web_applications
+  -->
+  <!--
+    todo:
+      for large files, firefox is giving warnings about script time, need to chunk the input data
+      have a spinner while compressing, and add status message
+      sendData is saying that the file is uploaded before its even compressed
+  -->
+  <head>
+    <script type="text/javascript" src="/static/js-deflate/rawdeflate.js"></script>
+    <style>
+      #drop_zone {
+      border: 2px dashed #bbb;
+      -moz-border-radius: 5px;
+      -webkit-border-radius: 5px;
+      border-radius: 5px;
+      padding: 25px;
+      text-align: center;
+      font: 20pt bold 'Vollkorn';
+      color: #bbb;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="drop_zone">Drop rift log here</div>
+    <output id="filename"></output><br>
+    <output id="status"></output><br>
+    <output id="logname"></output><br>
+
+    <script>
+  $ = function(id) { return document.getElementById(id); }
+
+  function handleFileSelect(evt) {
+    evt.stopPropagation();
+    evt.preventDefault();
+
+    var f = evt.dataTransfer.files[0]; // Grab just the first file as a File object
+    var reader = new FileReader();
+
+    $('filename').innerHTML = f.name;
+
+
+    function compressData(data) {
+      // deflated data does not have the zlib header or data checksum
+      return btoa(RawDeflate.deflate(data,3));
+    }
+
+    // modified from https://developer.mozilla.org/en/using_files_from_web_applications
+    function sendData(data) {
+      dataSize = data.length;
+      boundary = "xxxxxxxxxxxxxxxxxxxxxxx";
+      uri = "/upload";
+      xhr = new XMLHttpRequest();
+
+
+      // build up a fake Mime message, lots of parts to make sure server side can handle it
+      // server should only care about the Filedata part
+      var body = "--" + boundary + "\r\n";
+      body += "Content-Disposition: form-data; name=\"Filename\"\r\n\r\n";
+      body += "fake.txt\r\n";
+      body += "--" + boundary + "\r\n";
+      body += "Content-Disposition: form-data; name=\"Filedata\"; filename=\"fake.txt\"\r\n";
+      body += "Content-Type: application/octet-stream\r\n\r\n";
+      body += data + "\r\n";
+      body += "--" + boundary + "\r\n";
+      body += "Content-Disposition: form-data; name=\"Upload\"\r\n\r\n";
+      body += "Submit Query\r\n";
+      body += "--" + boundary + "--";
+
+      xhr.open("POST", uri, true);
+      xhr.setRequestHeader("Content-Type", "multipart/form-data; boundary="+boundary);
+      xhr.setRequestHeader("Content-Length", body.length);
+
+      xhr.onreadystatechange = function() {
+        if (xhr.readyState == 4) {
+          if (xhr.status == 200) {
+            $('status').innerHTML = "uploaded";
+            $('logname').innerHTML = xhr.responseText;
+            window.location.href = 'results/' + xhr.responseText;
+          } else {
+            $('status').innerHTML = "error";
+          }
+        } else {
+          $('status').innerHTML = "uploading";
+        }
+      }
+
+      xhr.send(body);
+    }
+
+    reader.onload = function(e) {
+      sendData(compressData(e.target.result));
+    }
+
+    reader.readAsText(f);
+  }
+
+  function handleDragOver(evt) {
+    evt.stopPropagation();
+    evt.preventDefault();
+  }
+
+  // Setup the dnd listeners.
+  $('drop_zone').addEventListener('dragover', handleDragOver, false);
+  $('drop_zone').addEventListener('drop', handleFileSelect, false);
+    </script>
+
+    riftreplay@gmail.com
+
+  </body>
+</html>
