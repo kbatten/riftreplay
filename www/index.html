@@ -29,11 +29,15 @@
   <body>
     <div id="drop_zone">Drop rift log here</div>
     <output id="filename"></output><br>
-    <output id="status"></output><br>
     <output id="logname"></output><br>
+    <output id="status"></output><br>
+    <output id="percent"></output><br>
+    <output id="debug"></output><br>
 
     <script>
   $ = function(id) { return document.getElementById(id); }
+
+  g_uploading = false;
 
   function adler32(data) {
     a = 1;
@@ -52,73 +56,81 @@
     return r.join("")
   }
 
+  function compressData(data) {
+    // deflated data does not have the zlib header or data checksum
+    // second part of the header is most likely not correct
+    header = String.fromCharCode(0x78) + String.fromCharCode(0x01)
+    raw_compressed = RawDeflate.deflate(data)
+    checksum = adler32(data)
+    compressed = header + raw_compressed + checksum;
+    return compressed;
+  }
+
+  // modified from https://developer.mozilla.org/en/using_files_from_web_applications
+  // sends data in base64
+  function sendData(raw_data) {
+    data = btoa(raw_data)
+    dataSize = data.length;
+    boundary = "yyyyyyyyyyyyyyyyyyyyyyy";
+    uri = "/upload";
+    xhr = new XMLHttpRequest();
+
+    // build up a fake Mime message, lots of parts to make sure server side can handle it
+    // server should only care about the Filedata part
+    var body = "--" + boundary + "\r\n";
+    body += "Content-Disposition: form-data; name=\"Filename\"\r\n\r\n";
+    body += "fake.txt\r\n";
+    body += "--" + boundary + "\r\n";
+    body += "Content-Disposition: form-data; name=\"Filedata\"; filename=\"fake.txt\"\r\n";
+    body += "Content-Type: application/octet-stream\r\n\r\n";
+    body += data + "\r\n";
+    body += "--" + boundary + "\r\n";
+    body += "Content-Disposition: form-data; name=\"Upload\"\r\n\r\n";
+    body += "Submit Query\r\n";
+    body += "--" + boundary + "--";
+
+    xhr.open("POST", uri, true);
+    xhr.setRequestHeader("Content-Type", "multipart/form-data; boundary="+boundary);
+    xhr.setRequestHeader("Content-Length", body.length);
+
+    xhr.onreadystatechange = function() {
+      if (xhr.readyState == 4) {
+        if (xhr.status == 200) {
+          $('logname').innerHTML = xhr.responseText;
+          if (xhr.responseText) {
+            g_uploading = false;
+            $('status').innerHTML = "uploaded";
+            window.location.href = 'results/' + xhr.responseText;
+          }
+        } else {
+          $('status').innerHTML = "error";
+          g_uploading = false;
+        }
+      } else {
+        $('status').innerHTML = "uploading";
+      }
+    }
+
+    xhr.send(body);
+  }
+
   function handleFileSelect(evt) {
     evt.stopPropagation();
     evt.preventDefault();
+
+    if (g_uploading == true) {
+      return;
+    }
+    g_uploading = true;
 
     var f = evt.dataTransfer.files[0]; // Grab just the first file as a File object
     var reader = new FileReader();
 
     $('filename').innerHTML = f.name;
 
-
-    function compressData(data) {
-      // deflated data does not have the zlib header or data checksum
-      // second part of the header is most likely not correct
-      // the slice+0x00 is due to a trailing 0x0030 that needs to be 0x0000
-      header = String.fromCharCode(0x78) + String.fromCharCode(0x01)
-      raw_compressed = RawDeflate.deflate(data)
-      checksum = adler32(data)
-      compressed = header + raw_compressed + checksum;
-      return btoa(compressed);
-    }
-
-    // modified from https://developer.mozilla.org/en/using_files_from_web_applications
-    function sendData(data) {
-      dataSize = data.length;
-      boundary = "xxxxxxxxxxxxxxxxxxxxxxx";
-      uri = "/upload";
-      xhr = new XMLHttpRequest();
-
-
-      // build up a fake Mime message, lots of parts to make sure server side can handle it
-      // server should only care about the Filedata part
-      var body = "--" + boundary + "\r\n";
-      body += "Content-Disposition: form-data; name=\"Filename\"\r\n\r\n";
-      body += "fake.txt\r\n";
-      body += "--" + boundary + "\r\n";
-      body += "Content-Disposition: form-data; name=\"Filedata\"; filename=\"fake.txt\"\r\n";
-      body += "Content-Type: application/octet-stream\r\n\r\n";
-      body += data + "\r\n";
-      body += "--" + boundary + "\r\n";
-      body += "Content-Disposition: form-data; name=\"Upload\"\r\n\r\n";
-      body += "Submit Query\r\n";
-      body += "--" + boundary + "--";
-
-      xhr.open("POST", uri, true);
-      xhr.setRequestHeader("Content-Type", "multipart/form-data; boundary="+boundary);
-      xhr.setRequestHeader("Content-Length", body.length);
-
-      xhr.onreadystatechange = function() {
-        if (xhr.readyState == 4) {
-          if (xhr.status == 200) {
-            $('status').innerHTML = "uploaded";
-            $('logname').innerHTML = xhr.responseText;
-            window.location.href = 'results/' + xhr.responseText;
-          } else {
-            $('status').innerHTML = "error";
-          }
-        } else {
-          $('status').innerHTML = "uploading";
-        }
-      }
-
-      xhr.send(body);
-    }
-
     reader.onload = function(e) {
       sendData(compressData(e.target.result));
-    }
+   }
 
     reader.readAsText(f);
   }

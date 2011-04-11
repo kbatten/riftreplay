@@ -34,9 +34,6 @@ class UploadHandler(tornado.web.RequestHandler):
         compressed_b64 = (self.request.body.split(chr(13)+chr(10)+chr(13)+chr(10))[2]).split("\r\n--")[0]
         compressed = base64.b64decode(compressed_b64)
 
-        f1 = open("compressed", "w")
-        f1.write(compressed)
-
         # http://www.velocityreviews.com/forums/t696109-zlib-correct-checksum-but-error-decompressing.html
         uncompressed = zlib.decompress(compressed)
 
