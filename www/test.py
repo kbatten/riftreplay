@@ -15,8 +15,7 @@ import couchdb
 
 from rift import combatlog
 
-upload_root="/home/ubuntu/upload"
-
+upload_root="./upload"
 
 class MainHandler(tornado.web.RequestHandler):
     def get(self):
