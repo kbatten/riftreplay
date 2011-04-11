@@ -37,43 +37,43 @@
     <script>
   $ = function(id) { return document.getElementById(id); }
 
-  g_uploading = false;
+  var g_uploading = false;
 
+  // adler32 is amazingly simple
   function adler32(data) {
-    a = 1;
-    b = 0;
-    for (i=0;i<data.length;i++) {
-      ascii = data.charCodeAt(i);
+    var a = 1;
+    var b = 0;
+    for (var i=0;i<data.length;i++) {
+      var ascii = data.charCodeAt(i);
       a = (a + ascii) % 65521
       b = (a + b) % 65521
     }
-    a0 = a >>> 8
-    a1 = a & 255
-    b0 = b >>> 8
-    b1 = b & 255
+    var a0 = a >>> 8
+    var a1 = a & 255
+    var b0 = b >>> 8
+    var b1 = b & 255
 
-    r = [String.fromCharCode(b0),String.fromCharCode(b1),String.fromCharCode(a0),String.fromCharCode(a1)]
-    return r.join("")
+    return String.fromCharCode(b0) + String.fromCharCode(b1) + String.fromCharCode(a0) + String.fromCharCode(a1)
   }
 
   function compressData(data) {
     // deflated data does not have the zlib header or data checksum
     // second part of the header is most likely not correct
-    header = String.fromCharCode(0x78) + String.fromCharCode(0x01)
-    raw_compressed = RawDeflate.deflate(data)
-    checksum = adler32(data)
-    compressed = header + raw_compressed + checksum;
+    var header = String.fromCharCode(0x78) + String.fromCharCode(0x01)
+    var raw_compressed = RawDeflate.deflate(data)
+    var checksum = adler32(data)
+    var compressed = header + raw_compressed + checksum;
     return compressed;
   }
 
   // modified from https://developer.mozilla.org/en/using_files_from_web_applications
   // sends data in base64
   function sendData(raw_data) {
-    data = btoa(raw_data)
-    dataSize = data.length;
-    boundary = "yyyyyyyyyyyyyyyyyyyyyyy";
-    uri = "/upload";
-    xhr = new XMLHttpRequest();
+    var data = btoa(raw_data)
+    var dataSize = data.length;
+    var boundary = "yyyyyyyyyyyyyyyyyyyyyyy";
+    var uri = "/upload";
+    var xhr = new XMLHttpRequest();
 
     // build up a fake Mime message, lots of parts to make sure server side can handle it
     // server should only care about the Filedata part
