@@ -1,3 +1,48 @@
+new function: sendCompressedData(data, callback compressionProgress)
+ - compresses data in chuncks using setTimeout
+ - each chunk will be a mime part
+    Content-Disposition: form-data; name="Filedata"; filename="<chunk index>"\r\n
+ - once everything is compressed then send it all with one send
+ - progress callback will be called after every chunk (http://robertnyman.com/2010/12/16/utilizing-the-html5-file-api-to-choose-upload-preview-and-see-progress-for-multiple-files/)
+ - visualization
+compression:  25%
+upload:        0%
+
+
+sendCompressedData(data, function compressionCallback(evt), function uploadCallback(evt)) {
+  var compressedData;
+  compressData(data, compressedData, compressionCallback, function(compressedData, uploadCallback) {
+    sendData(compressedData, uploadCallback);
+  }
+}
+
+sendData(data[], function uploadCallback(evt)) {
+// builds up a multipart mime with each element of data being a part
+// if callback exists then register that function as the xhr.upload.addEventListener("progress", function(evt))
+  uploadEvt.total = data.length;
+  uploadEvt.loaded = 0;
+  for (var i in data) {
+    // for now fake the upload event
+    uploadEvt.loaded = i;
+    uploadCallback(uploadEvt);
+  }
+}
+
+compressData(data, function compressionCallback(evt)) {
+// compresses data by chunks into an array with each element being a compressed chunk
+  var compressedData = []
+  var compressionEvt
+  compressionEvt.loaded = 0
+  compressionEvt.total = data.length
+  for chunk in data.slice(chunkSize):
+    compressedData.append(compressData(chunk))
+    compressionEvt.loaded += chunk.length
+    compressionCallback(compressionEvt)}
+
+
+compressDataChunk(chunk) {
+}
+
 chunk up uncompressed client side data
 compress a chunk and upload it
 server side recieves it, uncompresses it and appends it to the log

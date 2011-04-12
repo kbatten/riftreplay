@@ -9,10 +9,10 @@
     todo:
       for large files, firefox is giving warnings about script time, need to chunk the input data
       have a spinner while compressing, and add status message
-      sendData is saying that the file is uploaded before its even compressed
   -->
   <head>
     <script type="text/javascript" src="/static/js-deflate/rawdeflate.js"></script>
+    <script type="text/javascript" src="static/js-deflate/rawdeflate.js"></script>
     <style>
       #drop_zone {
       border: 2px dashed #bbb;
@@ -27,11 +27,13 @@
     </style>
   </head>
   <body>
+
     <div id="drop_zone">Drop rift log here</div>
-    <output id="filename"></output><br>
-    <output id="logname"></output><br>
-    <output id="status"></output><br>
-    <output id="percent"></output><br>
+    filename: <output id="filename"></output><br>
+    logname: <output id="logname"></output><br>
+    status: <output id="status"></output><br>
+    compression: <output id="compression_percent">0%</output><br>
+    upload: <output id="upload_percent">0%</output><br>
     <output id="debug"></output><br>
 
     <script>
@@ -39,79 +41,116 @@
 
   var g_uploading = false;
 
-  // adler32 is amazingly simple
-  function adler32(data) {
-    var a = 1;
-    var b = 0;
-    for (var i=0;i<data.length;i++) {
-      var ascii = data.charCodeAt(i);
-      a = (a + ascii) % 65521
-      b = (a + b) % 65521
+  function compressionUpdate(evt) {
+    $('compression_percent').innerHTML = Math.ceil(100 * (evt.loaded / evt.total)) + "%"
+    if (evt.loaded == evt.total) {
+     g_uploading = false;
     }
-    var a0 = a >>> 8
-    var a1 = a & 255
-    var b0 = b >>> 8
-    var b1 = b & 255
-
-    return String.fromCharCode(b0) + String.fromCharCode(b1) + String.fromCharCode(a0) + String.fromCharCode(a1)
   }
 
-  function compressData(data) {
-    // deflated data does not have the zlib header or data checksum
-    // second part of the header is most likely not correct
-    var header = String.fromCharCode(0x78) + String.fromCharCode(0x01)
-    var raw_compressed = RawDeflate.deflate(data)
-    var checksum = adler32(data)
-    var compressed = header + raw_compressed + checksum;
-    return compressed;
+  function uploadUpdate(evt) {
+    // chrome fix
+    if (evt.total == 0) {
+      $('upload_percent').innerHTML = "100%"
+    } else {
+      $('upload_percent').innerHTML = Math.ceil(100 * (evt.loaded / evt.total)) + "%"
+    }
   }
 
-  // modified from https://developer.mozilla.org/en/using_files_from_web_applications
-  // sends data in base64
-  function sendData(raw_data) {
-    var data = btoa(raw_data)
-    var dataSize = data.length;
-    var boundary = "yyyyyyyyyyyyyyyyyyyyyyy";
-    var uri = "/upload";
-    var xhr = new XMLHttpRequest();
+  // asyncronously compress and then upload data
+  // each compressed data chunk will be in its own mime part
+  // callbacks will trigger on for each chunk that is processed with
+  //   evt.loaded = bytes processed
+  //   evt.total = total bytes to be processed
+  // data is compressed with zlib deflate, then base64 encoded
+  function uploadCompressedData(data, compressionCallback, uploadCallback) {
+    // modified from https://developer.mozilla.org/en/using_files_from_web_applications
+    function uploadDataAsync() {
+      var dataSize = 0;
+      var boundary = "yyyyyyyyyyyyyyyyyyyyyyy";
+      var uri = "/upload";
+      var xhr = new XMLHttpRequest();
 
-    // build up a fake Mime message, lots of parts to make sure server side can handle it
-    // server should only care about the Filedata part
-    var body = "--" + boundary + "\r\n";
-    body += "Content-Disposition: form-data; name=\"Filename\"\r\n\r\n";
-    body += "fake.txt\r\n";
-    body += "--" + boundary + "\r\n";
-    body += "Content-Disposition: form-data; name=\"Filedata\"; filename=\"fake.txt\"\r\n";
-    body += "Content-Type: application/octet-stream\r\n\r\n";
-    body += data + "\r\n";
-    body += "--" + boundary + "\r\n";
-    body += "Content-Disposition: form-data; name=\"Upload\"\r\n\r\n";
-    body += "Submit Query\r\n";
-    body += "--" + boundary + "--";
+      // build up a fake Mime message, lots of parts to make sure server side can handle it
+      // server should only care about the Filedata part
+      var body = "--" + boundary + "\r\n";
+      body += "Content-Disposition: form-data; name=\"Filename\"\r\n\r\n";
+      body += "fake.txt\r\n";
 
-    xhr.open("POST", uri, true);
-    xhr.setRequestHeader("Content-Type", "multipart/form-data; boundary="+boundary);
-    xhr.setRequestHeader("Content-Length", body.length);
+      for (var i in c_compressedData) {
+        var chunk = btoa(c_compressedData[i]);
+        dataSize += chunk.length;
 
-    xhr.onreadystatechange = function() {
-      if (xhr.readyState == 4) {
-        if (xhr.status == 200) {
-          $('logname').innerHTML = xhr.responseText;
-          if (xhr.responseText) {
-            g_uploading = false;
-            $('status').innerHTML = "uploaded";
-            window.location.href = 'results/' + xhr.responseText;
-          }
-        } else {
-          $('status').innerHTML = "error";
-          g_uploading = false;
-        }
+        body += "--" + boundary + "\r\n";
+        body += "Content-Disposition: form-data; name=\"Filedata\"; filename=\""+(parseInt(i)+1)+"/"+(c_compressedData.length)+"\"\r\n";
+        body += "Content-Type: application/octet-stream\r\n\r\n";
+        body += chunk + "\r\n";
+      }
+
+      body += "--" + boundary + "--";
+
+      xhr.open("POST", uri, true);
+      xhr.setRequestHeader("Content-Type", "multipart/form-data; boundary="+boundary);
+      xhr.setRequestHeader("Content-Length", body.length);
+
+      xhr.upload.addEventListener("progress", uploadCallback, false);
+      xhr.upload.addEventListener("load", uploadCallback, false);
+
+      xhr.send(body);
+    }
+
+    // adler32 is amazingly simple
+    function adler32(data) {
+      var a = 1;
+      var b = 0;
+      for (var i=0;i<data.length;i++) {
+        var ascii = data.charCodeAt(i);
+        a = (a + ascii) % 65521
+        b = (a + b) % 65521
+      }
+      var a0 = a >>> 8
+      var a1 = a & 255
+      var b0 = b >>> 8
+      var b1 = b & 255
+
+      return String.fromCharCode(b0) + String.fromCharCode(b1) + String.fromCharCode(a0) + String.fromCharCode(a1)
+    }
+
+    function compressDataChunk(chunk) {
+      // deflated data does not have the zlib header or data checksum
+      // second part of the header is most likely not correct
+      var header = String.fromCharCode(0x78) + String.fromCharCode(0x01)
+      var raw_compressed = RawDeflate.deflate(chunk)
+      var checksum = adler32(chunk)
+      var compressed = header + raw_compressed + checksum;
+      return compressed;
+    }
+
+    function compressDataAsync() {
+      // compress a data chunk
+      c_compressedData.push(compressDataChunk(c_data.slice(c_evt.loaded, c_evt.loaded + c_chunkSize)));
+      c_evt.loaded += c_chunkSize;
+      if (c_evt.loaded > c_evt.total) {
+        c_evt.loaded = c_evt.total;
+      }
+      compressionCallback(c_evt);
+      if (c_evt.loaded < c_evt.total) {
+        setTimeout(compressDataAsync, 0);
       } else {
-        $('status').innerHTML = "uploading";
+        // compression is done, lets trigger upload
+        c_evt.loaded = 0;
+        c_evt.total = c_compressedData.length;
+        setTimeout(uploadDataAsync, 0);
       }
     }
 
-    xhr.send(body);
+    var c_compressedData = []
+    c_data = data; // are we duplicating data?
+    var c_evt = [];
+    c_evt.loaded = 0;
+    c_evt.total = c_data.length;
+    c_chunkSize = 8192;
+    setTimeout(compressDataAsync, 0);
   }
 
   function handleFileSelect(evt) {
@@ -123,13 +162,16 @@
     }
     g_uploading = true;
 
+    $('compression_percent').innerHTML = "0%";
+    $('upload_percent').innerHTML = "0%";
+
     var f = evt.dataTransfer.files[0]; // Grab just the first file as a File object
     var reader = new FileReader();
 
     $('filename').innerHTML = f.name;
 
     reader.onload = function(e) {
-      sendData(compressData(e.target.result));
+      uploadCompressedData(e.target.result, compressionUpdate, uploadUpdate);
    }
 
     reader.readAsText(f);

@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 
 import zlib
-import gzip
 import os
 import json
 import uuid
 import base64
 import struct
 import StringIO
+import re
 
 import tornado.ioloop
 import tornado.web
@@ -24,22 +24,33 @@ class MainHandler(tornado.web.RequestHandler):
 
 class UploadHandler(tornado.web.RequestHandler):
     def post(self):
-        # log is zlib compressed (unfortunately missing headers and crd) and then base64 encoded
+        len_wire = len(self.request.body)
+        len_data = 0
+
+        # log is base64/zlib compressed
         logname = 'log-' + str(uuid.uuid4())
         f = open(os.path.join(upload_root,logname), "w")
 
-        parts = self.request.body.split(chr(13)+chr(10)+chr(13)+chr(10))
-        # for now, just assume the data is in the third part
-        compressed_b64 = (self.request.body.split(chr(13)+chr(10)+chr(13)+chr(10))[2]).split("\r\n--")[0]
-        compressed = base64.b64decode(compressed_b64)
+        boundary = "yyyyyyyyyyyyyyyyyyyyyyy"
 
-        # http://www.velocityreviews.com/forums/t696109-zlib-correct-checksum-but-error-decompressing.html
-        uncompressed = zlib.decompress(compressed)
+        mime = self.request.body.split("--" + boundary)
 
-        f.write(uncompressed)
+        index = 1
+        total = 0
+        for m in mime:
+            part = re.match("\r\nContent-Disposition: form-data; name=\"Filedata\"; filename=\"([0-9]+)/([0-9]+)\"\r\nContent-Type: application/octet-stream\r\n\r\n([0-9a-zA-Z\+/=]+)\r\n", m, re.M)
+            if part:
+                if int(part.group(1)) != index:
+                    raise IndexError
+                index += 1
+                total = int(part.group(2))
+                uncompressed = zlib.decompress(base64.b64decode(part.group(3)))
+                f.write(uncompressed)
+                len_data += len(uncompressed)
 
-        len_wire = len(self.request.body)
-        len_data = len(uncompressed)
+        if (index-1) != total:
+            raise IndexError
+
         print "compression: " + `len_wire` + "/" + `len_data` + " = " + `round(100.0 * float(len_wire)/float(len_data),2)` + "%"
 
         self.finish(logname)
