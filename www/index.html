@@ -7,8 +7,8 @@
   -->
   <!--
     todo:
-      for large files, firefox is giving warnings about script time, need to chunk the input data
-      have a spinner while compressing, and add status message
+      speed up compression (especially in firefox)
+      uploadUpdate only fires on "load" in firefox
   -->
   <head>
     <script type="text/javascript" src="/static/js-deflate/rawdeflate.js"></script>
@@ -21,7 +21,9 @@
       border-radius: 5px;
       padding: 25px;
       text-align: center;
-      font: 20pt bold 'Vollkorn';
+      font-size: 20pt;
+      font-weight: bold;
+      font-family: 'Arial';
       color: #bbb;
       }
     </style>
@@ -29,11 +31,6 @@
   <body>
 
     <div id="drop_zone">Drop rift log here</div>
-    filename: <output id="filename"></output><br>
-    logname: <output id="logname"></output><br>
-    status: <output id="status"></output><br>
-    compression: <output id="compression_percent">0%</output><br>
-    upload: <output id="upload_percent">0%</output><br>
     <output id="debug"></output><br>
 
     <script>
@@ -42,7 +39,7 @@
   var g_uploading = false;
 
   function compressionUpdate(evt) {
-    $('compression_percent').innerHTML = Math.ceil(100 * (evt.loaded / evt.total)) + "%"
+    $('drop_zone').innerHTML = Math.ceil(50 * (evt.loaded / evt.total)) + "%"
     if (evt.loaded == evt.total) {
      g_uploading = false;
     }
@@ -50,14 +47,14 @@
 
   function uploadUpdate(evt) {
     // chrome fix
-    if (evt.total == 0) {
-      $('upload_percent').innerHTML = "100%"
+    if (evt.total == evt.loaded) {
+      $('drop_zone').innerHTML = "100%"
     } else {
-      $('upload_percent').innerHTML = Math.ceil(100 * (evt.loaded / evt.total)) + "%"
+      $('drop_zone').innerHTML = 50 + Math.ceil(50 * (evt.loaded / evt.total)) + "%"
     }
   }
 
-  // asyncronously compress and then upload data
+  // asynchronously compress and then upload data
   // each compressed data chunk will be in its own mime part
   // callbacks will trigger on for each chunk that is processed with
   //   evt.loaded = bytes processed
@@ -162,13 +159,8 @@
     }
     g_uploading = true;
 
-    $('compression_percent').innerHTML = "0%";
-    $('upload_percent').innerHTML = "0%";
-
     var f = evt.dataTransfer.files[0]; // Grab just the first file as a File object
     var reader = new FileReader();
-
-    $('filename').innerHTML = f.name;
 
     reader.onload = function(e) {
       uploadCompressedData(e.target.result, compressionUpdate, uploadUpdate);
@@ -186,8 +178,5 @@
   $('drop_zone').addEventListener('dragover', handleDragOver, false);
   $('drop_zone').addEventListener('drop', handleFileSelect, false);
     </script>
-
-    riftreplay@gmail.com
-
   </body>
 </html>
