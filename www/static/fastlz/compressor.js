@@ -1,4 +1,3 @@
-
 // ported from the C code at http://www.fastlz.org
 // only supports level 1 (fast compression)
 

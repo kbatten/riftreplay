@@ -11,7 +11,6 @@
       uploadUpdate only fires on "load" in firefox
   -->
   <head>
-    <script type="text/javascript" src="static/js-deflate/rawdeflate.js"></script>
     <script type="text/javascript" src="static/fastlz/compressor.js"></script>
     <style>
       #drop_zone {
@@ -36,13 +35,13 @@
     <script>
   $ = function(id) { return document.getElementById(id); };
 
+  // only allow one file to be compressed/uploaded at a time
   var g_uploading = false;
 
   function compressionUpdate(evt) {
     $('drop_zone').innerHTML = Math.ceil(50 * (evt.loaded / evt.total)) + "%";
     if (evt.loaded == evt.total) {
       $('debug').innerHTML += "seconds to compress: " + (((new Date()).getTime() - g_compressStart)/1000) + "<br>";
-      g_uploading = false;
     }
   }
 
@@ -50,6 +49,7 @@
     // chrome fix
     if (evt.total == evt.loaded) {
       $('drop_zone').innerHTML = "100%";
+      g_uploading = false;
     } else {
       $('drop_zone').innerHTML = 50 + Math.ceil(50 * (evt.loaded / evt.total)) + "%";
     }
@@ -120,25 +120,12 @@
       return String.fromCharCode(b0) + String.fromCharCode(b1) + String.fromCharCode(a0) + String.fromCharCode(a1);
     }
 
-    function compressDataChunkDeflate(chunk) {
-      // compress with deflate (zlib)
-      // deflated data does not have the zlib header or data checksum
-      // second part of the header is most likely not correct
-      var header = String.fromCharCode(0x78) + String.fromCharCode(0x01);
-      var raw_compressed = RawDeflate.deflate(chunk);
-      var checksum = adler32(chunk);
-      var compressed = header + raw_compressed + checksum;
-      return compressed;
-    }
-
     function compressDataChunkFastlz(chunk) {
       // compress with fastlz
-      // need to figure out how to properly add headers/checksum
-      // need to comprare how different chunk sizes work
-      var raw_compressed = FastLz.compressor(chunk);
-      $('debug').innerHTML += "FastLz uncompressed size: " + chunk.length + "<br>";
-      $('debug').innerHTML += "FastLz compressed size: " + raw_compressed.length + "<br>";
-      return raw_compressed;
+      // need to compare how different chunk sizes work
+      var checksum = adler32(chunk);
+      var compressed = FastLz.compressor(chunk);
+      return checksum + compressed;
     }
 
     compressDataChunk = compressDataChunkFastlz;
@@ -166,8 +153,7 @@
     var c_evt = [];
     c_evt.loaded = 0;
     c_evt.total = c_data.length;
-    c_chunkSize = 104857600;
-//    c_chunkSize = 8192;
+    c_chunkSize = 1048576;
 
     g_compressStart = (new Date()).getTime();
 

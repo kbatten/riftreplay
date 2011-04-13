@@ -13,6 +13,7 @@ import tornado.ioloop
 import tornado.web
 import couchdb
 
+import fastlz
 from rift import combatlog
 
 upload_root="./upload"
@@ -24,14 +25,10 @@ class MainHandler(tornado.web.RequestHandler):
 
 class UploadHandler(tornado.web.RequestHandler):
     def post(self):
-        # debug
-        f_raw = open("file","w")
-        f_raw.write(self.request.body)
-
         len_wire = len(self.request.body)
         len_data = 0
 
-        # log is base64/zlib compressed
+        # log is base64/fastlz compressed
         logname = 'log-' + str(uuid.uuid4())
         f = open(os.path.join(upload_root,logname), "w")
 
@@ -48,7 +45,10 @@ class UploadHandler(tornado.web.RequestHandler):
                     raise IndexError
                 index += 1
                 total = int(part.group(2))
-                uncompressed = zlib.decompress(base64.b64decode(part.group(3)))
+                compressed_cs = base64.b64decode(part.group(3))
+                uncompressed = fastlz.decompress(compressed_cs[2:])
+                if zlib.adler32(uncompressed) != compressed_cs[:2]:
+                    raise IndexError ("checksum error")
                 f.write(uncompressed)
                 len_data += len(uncompressed)
 
