@@ -11,7 +11,7 @@
     
     var FASTLZ_READU16 = function(p, i)
     {
-        return ((p)[i] | (p)[i+1]<<8);
+        return p.charCodeAt(i) + (p.charCodeAt(i+1)<<8)
     };
     
     var HASH_LOG  = 13;
@@ -54,12 +54,8 @@
                 {
                     op[op_index++] = ip[ip_index++];
                 }
-                return op.join("");
             }
-            else
-            {
-                return op.join("");
-            }
+            return op.join("");
         }
 
         /* initializes hash table */
@@ -102,8 +98,8 @@
                (distance >= MAX_DISTANCE) ||
                ip[ref_index++] !== ip[ip_index++] || ip[ref_index++] !== ip[ip_index++] || ip[ref_index++] !== ip[ip_index++])
             {
-                /* literal */
-                op[op_index++] = ip_index[anchor_index++];
+                /* goto literal: */
+                op[op_index++] = ip[anchor_index++];
                 ip_index = anchor_index;
                 copy++;
                 if(copy === MAX_COPY)
@@ -111,7 +107,7 @@
                     copy = 0;
                     op[op_index++] = String.fromCharCode(MAX_COPY-1);
                 }
-                break;
+                continue;
             }
 
             /* last matched byte */
@@ -223,7 +219,7 @@
             op_index--;
         }
 
-        return op.slice(0,op_index);
+        return op.slice(0,op_index).join("");
    };
 
     if (! window.FastLz) { FastLz = {}; }
