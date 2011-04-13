@@ -41,7 +41,9 @@
   function compressionUpdate(evt) {
     $('drop_zone').innerHTML = Math.ceil(50 * (evt.loaded / evt.total)) + "%"
     if (evt.loaded == evt.total) {
-     g_uploading = false;
+      // DEBUG
+      $('debug').innerHTML += "seconds to compress: " + (((new Date()).getTime() - g_compressStart)/1000) + "<br>"
+      g_uploading = false;
     }
   }
 
@@ -93,6 +95,9 @@
       xhr.upload.addEventListener("progress", uploadCallback, false);
       xhr.upload.addEventListener("load", uploadCallback, false);
 
+      // DEBUG
+      $('debug').innerHTML += "compressed size: " + body.length + "<br>"
+
       xhr.send(body);
     }
 
@@ -113,7 +118,8 @@
       return String.fromCharCode(b0) + String.fromCharCode(b1) + String.fromCharCode(a0) + String.fromCharCode(a1)
     }
 
-    function compressDataChunk(chunk) {
+    function compressDataChunkDeflate(chunk) {
+      // compress with deflate (zlib)
       // deflated data does not have the zlib header or data checksum
       // second part of the header is most likely not correct
       var header = String.fromCharCode(0x78) + String.fromCharCode(0x01)
@@ -122,6 +128,8 @@
       var compressed = header + raw_compressed + checksum;
       return compressed;
     }
+
+    compressDataChunk = compressDataChunkDeflate;
 
     function compressDataAsync() {
       // compress a data chunk
@@ -147,6 +155,10 @@
     c_evt.loaded = 0;
     c_evt.total = c_data.length;
     c_chunkSize = 8192;
+
+    // DEBUG
+    g_compressStart = (new Date()).getTime()
+
     setTimeout(compressDataAsync, 0);
   }
 
