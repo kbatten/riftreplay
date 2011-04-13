@@ -24,6 +24,10 @@ class MainHandler(tornado.web.RequestHandler):
 
 class UploadHandler(tornado.web.RequestHandler):
     def post(self):
+        # debug
+        f_raw = open("file","w")
+        f_raw.write(self.request.body)
+
         len_wire = len(self.request.body)
         len_data = 0
 
