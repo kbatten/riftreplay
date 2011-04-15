@@ -10,7 +10,7 @@
     
     var FASTLZ_READU16 = function(p, i)
     {
-        return p.charCodeAt(i) + (p.charCodeAt(i+1)<<8)
+        return p.charCodeAt(i) + (p.charCodeAt(i+1)<<8);
     };
     
     var HASH_LOG  = 13;

@@ -112,7 +112,7 @@
       bytes[1] = String.fromCharCode(int & 255);
       int = int >> 8;
       bytes[0] = String.fromCharCode(int & 255);
-      return bytes.join("")
+      return bytes.join("");
     }
 
     // adler32 is amazingly simple
@@ -132,7 +132,7 @@
     function compressDataChunkFastlz(chunk) {
       // compress with fastlz
       // need to compare how different chunk sizes work
-      var size = int32ToBytes(chunk.length)
+      var size = int32ToBytes(chunk.length);
       var checksum = adler32(chunk);
       var compressed = FastLz.compressor(chunk);
       return size + checksum + compressed;
