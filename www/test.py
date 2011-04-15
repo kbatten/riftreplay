@@ -8,6 +8,7 @@ import base64
 import struct
 import StringIO
 import re
+import struct
 
 import tornado.ioloop
 import tornado.web
@@ -45,9 +46,15 @@ class UploadHandler(tornado.web.RequestHandler):
                     raise IndexError
                 index += 1
                 total = int(part.group(2))
-                compressed_cs = base64.b64decode(part.group(3))
-                uncompressed = fastlz.decompress(compressed_cs[2:])
-                if zlib.adler32(uncompressed) != compressed_cs[:2]:
+                decoded = base64.b64decode(part.group(3))
+                size = struct.unpack(">I", decoded[:4])[0]
+                checksum = struct.unpack(">I", decoded[4:8])[0]
+                # zlib.adler32 returns a signed checksum
+                if checksum > 2147483647:
+                    checksum -= 4294967296
+                compressed = decoded[8:]
+                uncompressed = fastlz.decompress(compressed, size)
+                if zlib.adler32(uncompressed) != checksum:
                     raise IndexError ("checksum error")
                 f.write(uncompressed)
                 len_data += len(uncompressed)
@@ -55,7 +62,10 @@ class UploadHandler(tornado.web.RequestHandler):
         if (index-1) != total:
             raise IndexError
 
-        print "compression: " + `len_wire` + "/" + `len_data` + " = " + `round(100.0 * float(len_wire)/float(len_data),2)` + "%"
+        if len_data:
+            print "compression: " + `len_wire` + "/" + `len_data` + " = " + `int(100.0 * float(len_wire)/float(len_data))` + "%"
+        else:
+            print "compression: " + `len_wire` + "/" + `len_data` + " = inf%"
 
         self.finish(logname)
 
