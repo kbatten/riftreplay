@@ -102,6 +102,19 @@
       xhr.send(body);
     }
 
+    function int32ToBytes(int) {
+
+      bytes = [];
+      bytes[3] = String.fromCharCode(int & 255);
+      int = int >> 8;
+      bytes[2] = String.fromCharCode(int & 255);
+      int = int >> 8;
+      bytes[1] = String.fromCharCode(int & 255);
+      int = int >> 8;
+      bytes[0] = String.fromCharCode(int & 255);
+      return bytes.join("")
+    }
+
     // adler32 is amazingly simple
     function adler32(data) {
       var a = 1;
@@ -112,20 +125,17 @@
         a = (a + ascii) % 65521;
         b = (a + b) % 65521;
       }
-      var a0 = a >>> 8;
-      var a1 = a & 255;
-      var b0 = b >>> 8;
-      var b1 = b & 255;
 
-      return String.fromCharCode(b0) + String.fromCharCode(b1) + String.fromCharCode(a0) + String.fromCharCode(a1);
+      return int32ToBytes(b*65536 + a);
     }
 
     function compressDataChunkFastlz(chunk) {
       // compress with fastlz
       // need to compare how different chunk sizes work
+      var size = int32ToBytes(chunk.length)
       var checksum = adler32(chunk);
       var compressed = FastLz.compressor(chunk);
-      return checksum + compressed;
+      return size + checksum + compressed;
     }
 
     compressDataChunk = compressDataChunkFastlz;

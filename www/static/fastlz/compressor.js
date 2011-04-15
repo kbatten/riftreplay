@@ -66,8 +66,8 @@
         /* we start with literal copy */
         copy = 2;
         op[op_index++] = String.fromCharCode(MAX_COPY-1);
-        op[op_index++] = String.fromCharCode(ip[ip_index++]);
-        op[op_index++] = String.fromCharCode(ip[ip_index++]);
+        op[op_index++] = ip[ip_index++];
+        op[op_index++] = ip[ip_index++];
 
         /* main loop */
         while(ip_index < ip_limit_index)
@@ -162,16 +162,13 @@
             ip_index -= 3;
             len = ip_index - anchor_index;
 
-            if(len > MAX_LEN-2)
-            {
-                while(len > MAX_LEN-2)
-                {
-                    op[op_index++] = String.fromCharCode((7 << 5) + (distance >> 8));
-                    op[op_index++] = String.fromCharCode(MAX_LEN - 2 - 7 -2);
-                    op[op_index++] = String.fromCharCode((distance & 255));
-                    len -= MAX_LEN-2;
-                }
+            while(len > MAX_LEN-2) {
+                op[op_index++] = String.fromCharCode((7 << 5) + (distance >> 8));
+                op[op_index++] = String.fromCharCode(MAX_LEN - 2 - 7 -2);
+                op[op_index++] = String.fromCharCode((distance & 255));
+                len -= MAX_LEN-2;
             }
+
             
             if(len < 7)
             {
