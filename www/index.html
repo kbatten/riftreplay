@@ -38,6 +38,7 @@
   // only allow one file to be compressed/uploaded at a time
   var g_uploading = false;
 
+  // not a real event
   function compressionUpdate(evt) {
     $('drop_zone').innerHTML = Math.ceil(50 * (evt.loaded / evt.total)) + "%";
     if (evt.loaded == evt.total) {
@@ -46,6 +47,12 @@
   }
 
   function uploadUpdate(evt) {
+    if (this.readyState == 4) {
+      if (this.status == 200) {
+        window.location.href = 'results/' + this.responseText;
+      }
+    }
+
     // chrome fix
     if (evt.total == evt.loaded) {
       $('drop_zone').innerHTML = "100%";
@@ -91,10 +98,11 @@
 
       xhr.open("POST", uri, true);
       xhr.setRequestHeader("Content-Type", "multipart/form-data; boundary="+boundary);
-      xhr.setRequestHeader("Content-Length", body.length);
 
       xhr.upload.addEventListener("progress", uploadCallback, false);
       xhr.upload.addEventListener("load", uploadCallback, false);
+//      xhr.upload.addEventListener("readystatechange", uploadCallback, false);
+      xhr.onreadystatechange = uploadCallback;
 
       $('debug').innerHTML += "compressed chunks: " + c_compressedData.length + "<br>";
       $('debug').innerHTML += "compressed size: " + body.length + "<br>";
