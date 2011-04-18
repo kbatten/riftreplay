@@ -31,7 +31,7 @@ class UploadHandler(tornado.web.RequestHandler):
 
         # log is base64/fastlz compressed
         logname = 'log-' + str(uuid.uuid4())
-        f = open(os.path.join(upload_root,logname), "w")
+        log = ""
 
         boundary = "yyyyyyyyyyyyyyyyyyyyyyy"
 
@@ -56,7 +56,7 @@ class UploadHandler(tornado.web.RequestHandler):
                 uncompressed = fastlz.decompress(compressed, size)
                 if zlib.adler32(uncompressed) != checksum:
                     raise IndexError ("checksum error")
-                f.write(uncompressed)
+                log += uncompressed
                 len_data += len(uncompressed)
 
         if (index-1) != total:
@@ -67,13 +67,16 @@ class UploadHandler(tornado.web.RequestHandler):
         else:
             print "compression: " + `len_wire` + "/" + `len_data` + " = inf%"
 
+        cl = combatlog.combatlog(name=logname, create=True, overwrite=True)
+        cl.store(log)
+        cl.update_index()
+
         self.finish(logname)
 
 
 class ResultsHandler(tornado.web.RequestHandler):
     def get(self, logname):
-        cl = combatlog.combatlog(name=logname, create=True, overwrite=True)
-        cl.store(file(os.path.join(upload_root,logname)).read())
+        cl = combatlog.combatlog(name=logname, create=False)
         cl.update_index()
 
         player_id = cl.get_player_id()
