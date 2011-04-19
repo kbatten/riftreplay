@@ -156,7 +156,7 @@ class Combatlog(object):
         return self._resample(recalculated, step_size)
 
 
-    def get_dps(self, actor_id, enemy_id, num_samples, window_size=3):
+    def get_dps_by_enemy_id(self, actor_id, enemy_id, num_samples, window_size=3):
         results = self.db.view("actions/damage_value_by_opponent", key={"friend_id":actor_id,"enemy_id":enemy_id})
         if not list(results):
             return []
@@ -164,3 +164,17 @@ class Combatlog(object):
         damage_values = sorted(list(results)[0]["value"])
 
         return self._smooth(damage_values, num_samples, window_size)
+
+    def get_dps_by_time(self, actor_id, start_time, end_time, num_samples, window_size=3):
+        results = self.db.view("actions/damage_value", key=actor_id)
+        if not list(results):
+            return []
+
+        damage_values = sorted(list(results)[0]["value"])
+
+        if not start_time:
+            start_time = 0
+        if not end_time:
+            end_time = damage_values[-1][0] + 1
+
+        return self._smooth([damage for damage in damage_values if damage[0] >= start_time and damage[0] <= end_time], num_samples, window_size)

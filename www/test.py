@@ -69,7 +69,7 @@ class UploadHandler(tornado.web.RequestHandler):
 
         cl = combatlog.combatlog(name=logname, create=True, overwrite=True)
         cl.store(log)
-        cl.update_index()
+#        cl.update_index()
 
         self.finish(logname)
 
@@ -90,6 +90,11 @@ class ResultsHandler(tornado.web.RequestHandler):
         self.write("</p>")
 
         self.write("<p><b>Enemies</b></br>")
+
+        self.write("<a href='http://riftreplay.com:8888/results/" + logname + "/"+player_id+"/0'>")
+        self.write("all</br>")
+        self.write("</a>")
+
         for actor_id in cl.get_enemy_ids(player_id):
             self.write("<a href='http://riftreplay.com:8888/results/" + logname + "/"+player_id+"/"+actor_id+"'>")
             self.write(cl.get_name(actor_id) + " : " + actor_id + "</br>")
@@ -117,7 +122,10 @@ class GraphHandler(tornado.web.RequestHandler):
 
     def get(self, logname, friend_id, enemy_id):
         self.header()
-        
+
+
+        if enemy_id == "0":
+            enemy_id = friend_id
 
         cl = combatlog.combatlog(name=logname)
 
@@ -138,7 +146,10 @@ $(function () {
 """)
 #        for enemy_id in cl.get_enemy_ids(friend_id):
         for enemy_id in [enemy_id]:
-            dps = cl.get_dps(friend_id, enemy_id, 200)
+            if enemy_id == friend_id:
+                dps = cl.get_dps_by_time(friend_id, None, None, 200)
+            else:
+                dps = cl.get_dps_by_enemy_id(friend_id, enemy_id, 200)
             self.write("""
     var d = """ + `dps` + """;
     $.plot($("#graph_""" + enemy_id + """"), [ d ], options);

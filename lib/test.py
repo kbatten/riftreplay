@@ -5,11 +5,12 @@ import sys
 from rift import combatlog
 
 
-cl = combatlog.combatlog(name='testfoo', create=True, overwrite=True)
-cl.store(file("/home/ubuntu/data/CombatLog4.txt").read())
+#cl = combatlog.combatlog(name='log-c4cb2e8b-2e19-4851-a1c4-8e399988050a')
+cl = combatlog.combatlog(name='testlog', create=True, overwrite=True)
+cl.store(file("/home/ubuntu/data/CombatLog4.txt"))
 #cl.store("""21:03:44: ( 3 , T=P#R=C#219831956824878999 , T=N#R=O#9223372037928544350 , T=X#R=X#0 , T=X#R=X#0 , Braks , Darkscale Drake , 105 , 46187323 , Foo Hammer ) Braks's Foo Hammer hits Darkscale Drake for 105 Physical damage.""")
 
-dps = cl.get_dps("219831956824878999", "9223372041032411014", 200)
+dps = cl.get_dps_by_time("219831956824878999", None, None, 200)
 
 print dps
 

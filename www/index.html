@@ -46,17 +46,25 @@
     }
   }
 
+  function processing(dots) {
+    da = ["", ".", "..", "...", "..", "."];
+    dots = dots % 6;
+    var i;
+    $('drop_zone').innerHTML = da[dots] + "processing" + da[dots];
+    setTimeout("processing(" + (dots + 1) + ")",1000);
+  }
+
   function uploadUpdate(evt) {
     if (this.readyState == 4) {
       if (this.status == 200) {
+        processing(0);
         window.location.href = 'results/' + this.responseText;
       }
     }
 
-    // chrome fix
     if (evt.total == evt.loaded) {
-      $('drop_zone').innerHTML = "100%";
-      g_uploading = false;
+       $('drop_zone').innerHTML = "100%";
+//      g_uploading = false;
     } else {
       $('drop_zone').innerHTML = 50 + Math.ceil(50 * (evt.loaded / evt.total)) + "%";
     }
