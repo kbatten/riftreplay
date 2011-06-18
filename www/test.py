@@ -82,7 +82,7 @@ class ResultsHandler(tornado.web.RequestHandler):
         player_id = cl.get_player_id()
         player_name = cl.get_name(player_id)
 
-        self.write("<p>http://riftreplay.com:8888/results/" + logname + "/[friend_id]/[enemy_id]</p>")
+        self.write("<p>/results/" + logname + "/[friend_id]/[enemy_id]</p>")
 
         self.write("<p><b>Friendlies</b></br>")
         for actor_id in cl.get_friend_ids(player_id):
@@ -91,12 +91,12 @@ class ResultsHandler(tornado.web.RequestHandler):
 
         self.write("<p><b>Enemies</b></br>")
 
-        self.write("<a href='http://riftreplay.com:8888/results/" + logname + "/"+player_id+"/0'>")
+        self.write("<a href='/results/" + logname + "/"+player_id+"/0'>")
         self.write("all</br>")
         self.write("</a>")
 
         for actor_id in cl.get_enemy_ids(player_id):
-            self.write("<a href='http://riftreplay.com:8888/results/" + logname + "/"+player_id+"/"+actor_id+"'>")
+            self.write("<a href='/results/" + logname + "/"+player_id+"/"+actor_id+"'>")
             self.write(cl.get_name(actor_id) + " : " + actor_id + "</br>")
             self.write("</a>")
         self.write("</p>")
@@ -177,5 +177,5 @@ if __name__ == "__main__":
                     ],
                 **settings)
 
-    application.listen(8888)
+    application.listen(80)
     tornado.ioloop.IOLoop.instance().start()
